@@ -73,20 +73,34 @@ void show_interface() {
 }
 
 void show_help(bool full_version) {
-    std::cout << R"(
-"-h" for help
-)";
-    if (!full_version)
-        return;
-    std::cout << R"(
-"play -v [PATH_TO_YOUR_VIDEO]" to play a video
-Correct Examples: (1st for Windows, 2nd for macOS)
->>play -v C:\video.mp4
->>play -v "/Users/robert/Downloads/video with spaces.mov"
+    if (full_version)
+        std::cout << R"(
+Usage:
+#################################################
+-------------------------------------------------
+help -- Get usage
+-------------------------------------------------
+play -- Start palyback
 
-"exit" to quit the programme
+play -v /path/to/a/video [-stct | -dyct] [-c s/l]
+     [-chars "@%#*+=-:. "]
+
+"play -v PATH_TO_YOUR_VIDEO" to play a video
+    Examples: (1st for Windows, 2nd for macOS)
+        >> play -v C:\video.mp4
+        >> play -v "/Users/robert/a video.mov"
+-------------------------------------------------
+set -- Change settings permanently
+-------------------------------------------------
+exit - Quit the programme
+-------------------------------------------------
+#################################################
 
 Project URL: 
+
+)";
+    else std::cout << R"(
+-------- Type "help" and return for help --------
 )";
 }
 
@@ -96,11 +110,8 @@ void clear_screen() {
     else
         system("clear");
 }
-#include <cctype>
-#include <string>
-#include <vector>
 
-std::vector<std::string> parseCommandLine(const std::string &str) {
+std::pair<int, const char **> parseCommandLine(const std::string &str) {
     std::vector<std::string> result;
     std::string currentArg;
     bool inQuotes = false; // if we're between "s or 's
@@ -143,27 +154,48 @@ std::vector<std::string> parseCommandLine(const std::string &str) {
         result.push_back(currentArg);
     }
 
-    return result;
+    // Convert std::vector<std::string> to const char* argv[]
+    int argc = static_cast<int>(result.size());
+    const char **argv = new const char *[argc + 1]; // +1 for the NULL terminator
+
+    for (int i = 0; i < argc; ++i) {
+        // Allocate memory for each string and copy its content
+        argv[i] = new char[result[i].size() + 1];               // +1 for null terminator
+        strcpy(const_cast<char *>(argv[i]), result[i].c_str()); // Copy string content
+    }
+    argv[argc] = nullptr; // NULL terminator for argv
+
+    return std::make_pair(argc, argv);
 }
 
-cmdOptions parseArguments(const std::vector<std::string> &args) {
+cmdOptions parseArguments(const std::pair<int, const char **> &args, const char *self_name) {
     cmdOptions cmdOptions;
-
-    for (size_t i = 0; i < args.size(); ++i) {
-        std::string arg = args[i];
-
+    int argc = args.first;
+    const char **argv = args.second;
+    for (int i = 0; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == self_name)
+            continue;
         if (arg[0] == '-') { // option starts with '-'
-            if (i + 1 < args.size() && args[i + 1][0] != '-') {
-                // check if there's a value following or not
-                cmdOptions.options[arg] = args[i + 1];
-                ++i; // jump over handled option
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                // Check if there's a value following or not
+                cmdOptions.options[arg] = argv[++i];
             } else {
                 cmdOptions.options[arg] = ""; // option without value
             }
         } else {
-            cmdOptions.arguments.push_back(arg); // norm arg
+            cmdOptions.arguments.push_back(arg); // normal arg
         }
     }
 
     return cmdOptions;
+}
+
+void print_error(std::string error_name, std::string error_detail) {
+    std::cerr << error_name;
+    if (error_detail.length())
+        std::cout << ": " << error_detail;
+    std::cout << std::endl
+              << "Press any key to continue..." << std::endl;
+    getchar();
 }
