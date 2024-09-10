@@ -6,9 +6,6 @@
 //
 
 #include "basic-functions.hpp"
-#include <cstring>
-#include <iostream>
-#include <map>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -55,6 +52,59 @@ std::string get_system_type() {
 #endif
 }
 
+std::string get_config_file_path() {
+    const char* home_dir = getenv("HOME");
+    if (!home_dir) {
+        home_dir = ".";
+    }
+    return std::string(home_dir) + "/CMD-Video-Player/config.txt";
+}
+
+void save_default_options_to_file(std::map<std::string, std::string> &default_options) {
+    std::string config_file_path = get_config_file_path();
+    std::ofstream config_file(config_file_path);
+    
+    if (!config_file.is_open()) {
+        std::cerr << "Error: Could not open config file for writing: " << config_file_path << std::endl;
+        return;
+    }
+
+    for (const auto& option : default_options) {
+        config_file << option.first << "=" << option.second << std::endl;
+    }
+    
+    config_file.close();
+    std::cout << "Default options saved to " << config_file_path << std::endl;
+}
+
+void load_default_options_from_file(std::map<std::string, std::string> &default_options) {
+    std::string config_file_path = get_config_file_path();
+    
+    if (!std::filesystem::exists(config_file_path)) {
+        std::cout << "No config file found. Skipping loading defaults." << std::endl;
+        return;
+    }
+
+    std::ifstream config_file(config_file_path);
+    if (!config_file.is_open()) {
+        std::cerr << "Error: Could not open config file for reading: " << config_file_path << std::endl;
+        return;
+    }
+
+    std::string line;
+    while (std::getline(config_file, line)) {
+        size_t equals_pos = line.find('=');
+        if (equals_pos != std::string::npos) {
+            std::string key = line.substr(0, equals_pos);
+            std::string value = line.substr(equals_pos + 1);
+            default_options[key] = value;
+        }
+    }
+    
+    config_file.close();
+    std::cout << "Default options loaded from " << config_file_path << std::endl;
+}
+
 void show_interface() {
     std::cout << R"(
   ____ __  __ ____   __     ___     _            
@@ -72,36 +122,44 @@ void show_interface() {
 )";
 }
 
-void show_help(bool full_version) {
-    if (full_version)
-        std::cout << R"(
-Usage:
-#################################################
--------------------------------------------------
-help -- Get usage
--------------------------------------------------
-play -- Start palyback
-
-play -v /path/to/a/video [-stct | -dyct] [-c s/l]
-     [-chars "@%#*+=-:. "]
-
-"play -v PATH_TO_YOUR_VIDEO" to play a video
-    Examples: (1st for Windows, 2nd for macOS)
-        >> play -v C:\video.mp4
-        >> play -v "/Users/robert/a video.mov"
--------------------------------------------------
-set -- Change settings permanently
--------------------------------------------------
-exit - Quit the programme
--------------------------------------------------
-#################################################
-
-Project URL: 
-
-)";
-    else std::cout << R"(
+void show_help(bool show_full) {
+    std::cout<<R"(
 -------- Type "help" and return for help --------
 )";
+
+    if (show_full) {
+        std::cout << R"(
+Usage:
+  play -v /path/to/video [-ct st/dy] [-c s/l] [-chars "@%#*+=-:. "]
+
+Options:
+  -v /path/to/video    Specify the video file to play
+  -ct [st|dy]          Choose the contrast mode for ASCII art generation
+                        st: Static contrast (default)
+                        dy: Dynamic contrast, scales the contrast dynamically based on the video
+  -c [s|l]             Choose the character set for ASCII art
+                        s: Short character set "@#*+-:. " (default)
+                        l: Long character set "@%#*+=^~-;:,'.` "
+  -chars "sequence"    Set a custom character sequence for ASCII art (perior to -c)
+                        Example: "@%#*+=-:. "
+
+Examples:
+  play -v video.mp4 -ct dy -c l
+      Play 'video.mp4' using dynamic contrast and long character set for ASCII art.
+  play -v 'a video.mp4' -chars "@#&*+=-:. "
+      Play 'a video.mp4' with a custom character sequence for ASCII art.
+  set -v 'default.mp4'
+      Set a default video path to 'default.mp4' for future playback commands.
+  set -ct dy
+      Set dynamic contrast as the default mode for future playback commands.
+
+Additional commands:
+  help               Show this help message
+  exit               Exit the program
+  set                Set default options (e.g., video path, contrast mode)
+  save               Save the default options to a configuration file
+)";
+    }
 }
 
 void clear_screen() {

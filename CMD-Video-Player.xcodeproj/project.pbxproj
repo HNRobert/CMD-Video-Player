@@ -17,19 +17,15 @@
 		E13489342C8B2E140060ECBF /* libavcodec.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E13488B32C8B2CF20060ECBF /* libavcodec.a */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		E1CBC3B52C8497AF00C2FECB /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1;
-			dstSubfolderSpec = 0;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
+		E10E62E82C8EA45300615524 /* libopencv_highgui.4.10.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_highgui.4.10.0.dylib; sourceTree = "<group>"; };
+		E10E62E92C8EA45300615524 /* libopencv_videoio.4.10.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_videoio.4.10.0.dylib; sourceTree = "<group>"; };
+		E10E62EA2C8EA45300615524 /* libopencv_imgproc.4.10.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_imgproc.4.10.0.dylib; sourceTree = "<group>"; };
+		E10E62EB2C8EA45300615524 /* libopencv_datasets.4.10.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libopencv_datasets.4.10.0.dylib; sourceTree = "<group>"; };
+		E10E62EC2C8EA45300615524 /* libopencv_videoio.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libopencv_videoio.a; sourceTree = "<group>"; };
+		E10E62ED2C8EA45300615524 /* libopencv_highgui.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libopencv_highgui.a; sourceTree = "<group>"; };
+		E10E62EE2C8EA45400615524 /* libopencv_core.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libopencv_core.a; sourceTree = "<group>"; };
+		E10E62EF2C8EA45400615524 /* libopencv_imgproc.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libopencv_imgproc.a; sourceTree = "<group>"; };
 		E13487E82C8B2CF20060ECBF /* ffmpeg.rb */ = {isa = PBXFileReference; lastKnownFileType = text.script.ruby; path = ffmpeg.rb; sourceTree = "<group>"; };
 		E13487EA2C8B2CF20060ECBF /* aviocat */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = aviocat; sourceTree = "<group>"; };
 		E13487EB2C8B2CF20060ECBF /* bisect-create */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "bisect-create"; sourceTree = "<group>"; };
@@ -602,6 +598,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		E10E62F82C8EA45B00615524 /* libopencv */ = {
+			isa = PBXGroup;
+			children = (
+				E10E62EE2C8EA45400615524 /* libopencv_core.a */,
+				E10E62EB2C8EA45300615524 /* libopencv_datasets.4.10.0.dylib */,
+				E10E62ED2C8EA45300615524 /* libopencv_highgui.a */,
+				E10E62E82C8EA45300615524 /* libopencv_highgui.4.10.0.dylib */,
+				E10E62EF2C8EA45400615524 /* libopencv_imgproc.a */,
+				E10E62EA2C8EA45300615524 /* libopencv_imgproc.4.10.0.dylib */,
+				E10E62EC2C8EA45300615524 /* libopencv_videoio.a */,
+				E10E62E92C8EA45300615524 /* libopencv_videoio.4.10.0.dylib */,
+			);
+			path = libopencv;
+			sourceTree = "<group>";
+		};
 		E13487E92C8B2CF20060ECBF /* .brew */ = {
 			isa = PBXGroup;
 			children = (
@@ -1068,6 +1079,7 @@
 		E1CBC3AE2C8497AF00C2FECB = {
 			isa = PBXGroup;
 			children = (
+				E10E62F82C8EA45B00615524 /* libopencv */,
 				E1CBC3B92C8497AF00C2FECB /* CMD-Video-Player */,
 				E1CBC3B82C8497AF00C2FECB /* Products */,
 				E1DCA69C2C86D15E00935E38 /* Frameworks */,
@@ -1391,8 +1403,8 @@
 			buildPhases = (
 				E15B31762C86D49F0011C3A6 /* Headers */,
 				E1CBC3B32C8497AF00C2FECB /* Sources */,
-				E1CBC3B52C8497AF00C2FECB /* CopyFiles */,
 				E1DCA71D2C86D25700935E38 /* Frameworks */,
+				E1BFC1F32C8EA1C600F594EB /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1439,6 +1451,16 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E1BFC1F32C8EA1C600F594EB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		E1CBC3B32C8497AF00C2FECB /* Sources */ = {
@@ -1507,6 +1529,8 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = /usr/local/Cellar/opencv/4.10.0_4/include/opencv4;
 				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/Cellar/opencv/4.10.0_4/include/opencv4;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[arch=*]" = "@executable_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
@@ -1569,6 +1593,8 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = /usr/local/Cellar/opencv/4.10.0_4/include/opencv4;
 				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/Cellar/opencv/4.10.0_4/include/opencv4;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[arch=*]" = "@executable_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
@@ -1599,7 +1625,8 @@
 					/opt/homebrew/include,
 				);
 				LD_QUOTE_LINKER_ARGUMENTS_FOR_COMPILER_DRIVER = YES;
-				LD_RUNPATH_SEARCH_PATHS = "";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[arch=*]" = "@executable_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					/opt/homebrew/Cellar/opencv/4.10.0_5/lib,
 					/opt/homebrew/Cellar/sdl2/2.30.7/lib,
@@ -1650,7 +1677,8 @@
 					/opt/homebrew/include,
 				);
 				LD_QUOTE_LINKER_ARGUMENTS_FOR_COMPILER_DRIVER = YES;
-				LD_RUNPATH_SEARCH_PATHS = "";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[arch=*]" = "@executable_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					/opt/homebrew/Cellar/opencv/4.10.0_5/lib,
 					/opt/homebrew/Cellar/sdl2/2.30.7/lib,

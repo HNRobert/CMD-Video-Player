@@ -9,6 +9,7 @@
 #include "video-player.hpp"
 
 const char *SELF_FILE_NAME;
+std::map<std::string, std::string> default_options;
 
 void get_command(std::string input = "$DEFAULT") {
     if (input == "$DEFAULT") {
@@ -41,7 +42,39 @@ void get_command(std::string input = "$DEFAULT") {
         show_help(true);
         get_command();
         return;
-    } else if (cmdOpts.arguments[0] == "play") {
+    }
+    
+    if (cmdOpts.arguments[0] == "set") {
+        // 将参数中的设置保存到默认选项
+        for (const auto& option : cmdOpts.options) {
+            default_options[option.first] = option.second;
+        }
+        std::cout << "Settings updated successfully." << std::endl;
+        get_command();
+        return;
+    }
+    
+    if (cmdOpts.arguments[0] == "save") {
+        save_default_options_to_file(default_options);
+        get_command();
+        return;
+    }
+    
+    if (cmdOpts.arguments[0] == "play") {
+        // 如果用户没有提供某些选项，使用默认设置
+        if (!params_include(cmdOpts.options, "-v") && params_include(default_options, "-v")) {
+            cmdOpts.options["-v"] = default_options["-v"];
+        }
+        if (!params_include(cmdOpts.options, "-ct") && params_include(default_options, "-ct")) {
+            cmdOpts.options["-ct"] = default_options["-ct"];
+        }
+        if (!params_include(cmdOpts.options, "-c") && params_include(default_options, "-c")) {
+            cmdOpts.options["-c"] = default_options["-c"];
+        }
+        if (!params_include(cmdOpts.options, "-chars") && params_include(default_options, "-chars")) {
+            cmdOpts.options["-chars"] = default_options["-chars"];
+        }
+        
         play_video(cmdOpts.options);
         show_interface();
         get_command();
@@ -67,6 +100,8 @@ void start_ui() {
 }
 
 int main(int argc, const char *argv[]) {
+    load_default_options_from_file(default_options);
+    
     clear_screen();
     SELF_FILE_NAME = argv[0];
     switch (argc) {

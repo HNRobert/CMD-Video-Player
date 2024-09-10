@@ -10,12 +10,6 @@
 
 #define AUDIO_QUEUE_SIZE 1024 * 1024 // 1MB buffer
 
-struct AudioQueue {
-    uint8_t *data;
-    int size;
-    SDL_mutex *mutex;
-};
-
 bool is_escape_key_pressed() {
 #ifdef _WIN32
     // Windows-specific code to check if the ESC key is pressed
@@ -27,12 +21,31 @@ bool is_escape_key_pressed() {
 #endif
 }
 
-const char *ASCII_SEQ_FULL_64 = "@%#WM&8B$wmoahkbdpqZO0QLCJUYXzcvunxrjft/|(1{[?-_+~<i!lI;:,\"`'. ";
-const char *ASCII_SEQ_SHORT_10 = "@%#*+=-:. ";
+struct AudioQueue {
+    uint8_t *data;
+    int size;
+    SDL_mutex *mutex;
+};
+
+const char *ASCII_SEQ_LONG = "@%#*+^=~-;:,'.` ";
+const char *ASCII_SEQ_SHORT = "@#*+-:. ";
+
+// ANSI escape sequence to move the cursor to the top-left corner and clear the screen
+void move_cursor_to_top_left(bool clear = false) {
+    printf("\033[H"); // Moves the cursor to (0, 0) and clears the screen
+    if (clear)
+        printf("\033[2J");
+}
+
+void add_empty_lines_for(std::string &combined_output, int count) {
+    for (int i = 0; i < count; i++) {
+        combined_output += "\n\033[K"; // 换行并清除该行到行末的字符
+    }
+}
 
 std::string image_to_ascii_dy_contrast(const cv::Mat &image,
                                        int pre_space = 0,
-                                       const char *asciiChars = ASCII_SEQ_SHORT_10) {
+                                       const char *asciiChars = ASCII_SEQ_SHORT) {
     unsigned long asciiLength = strlen(asciiChars);
     std::string asciiImage;
 
@@ -50,6 +63,8 @@ std::string image_to_ascii_dy_contrast(const cv::Mat &image,
             char asciiChar = asciiChars[(scaled_pixel * asciiLength) / 256];
             asciiImage += asciiChar;
         }
+        if (pre_space)
+            asciiImage += "\033[K";
         asciiImage += '\n';
     }
 
@@ -57,7 +72,7 @@ std::string image_to_ascii_dy_contrast(const cv::Mat &image,
 }
 
 std::string image_to_ascii(const cv::Mat &image, int pre_space = 0,
-                           const char *asciiChars = ASCII_SEQ_SHORT_10) {
+                           const char *asciiChars = ASCII_SEQ_SHORT) {
     // @%#*+=-:.
     unsigned long asciiLength = strlen(asciiChars);
     std::string asciiImage;
@@ -69,6 +84,8 @@ std::string image_to_ascii(const cv::Mat &image, int pre_space = 0,
             char asciiChar = asciiChars[(pixel * asciiLength) / 256];
             asciiImage += asciiChar;
         }
+        if (pre_space)
+            asciiImage += "\033[K";
         asciiImage += '\n';
     }
 
@@ -95,7 +112,7 @@ std::string format_time(int64_t seconds) {
 }
 
 std::string create_progress_bar(double progress, int width) {
-    int filled = static_cast<int>(progress * width);
+    int filled = static_cast<int>(progress * (width));
     std::string bar = std::string(filled, '+') + std::string(width - filled, '-');
     return bar;
 }
@@ -116,34 +133,79 @@ int select_audio_device() {
     return selection;
 }
 
+void print_audio_stream_info(AVStream *audio_stream, AVCodecContext *audio_codec_ctx) {
+    std::cout << "\n====== Audio Stream Information ======\n";
+    std::cout << "Codec: " << avcodec_get_name(audio_codec_ctx->codec_id) << std::endl;
+    std::cout << "Bitrate: " << audio_codec_ctx->bit_rate << " bps" << std::endl;
+    std::cout << "Sample Rate: " << audio_codec_ctx->sample_rate << " Hz" << std::endl;
+    std::cout << "Channels: " << audio_codec_ctx->ch_layout.nb_channels << std::endl;
+    std::cout << "Sample Format: " << av_get_sample_fmt_name(audio_codec_ctx->sample_fmt) << std::endl;
+    std::cout << "Frame Size: " << audio_codec_ctx->frame_size << std::endl;
+    std::cout << "Timebase: " << audio_stream->time_base.num << "/" << audio_stream->time_base.den << std::endl;
+
+    // Print channel layout
+    char channel_layout[64];
+    av_channel_layout_describe(&audio_codec_ctx->ch_layout, channel_layout, sizeof(channel_layout));
+    std::cout << "Channel Layout: " << channel_layout << std::endl;
+
+    // Print codec parameters
+    std::cout << "Codec Parameters:" << std::endl;
+    std::cout << "  Format: " << audio_stream->codecpar->format << std::endl;
+    std::cout << "  Codec Type: " << av_get_media_type_string(audio_stream->codecpar->codec_type) << std::endl;
+    std::cout << "  Codec ID: " << audio_stream->codecpar->codec_id << std::endl;
+    std::cout << "  Codec Tag: 0x" << std::hex << std::setw(8) << std::setfill('0') << audio_stream->codecpar->codec_tag << std::dec << std::endl;
+
+    std::cout << "======================================\n\n";
+}
+
 void audio_callback(void *userdata, Uint8 *stream, int len) {
     AudioQueue *audio_queue = (AudioQueue *)userdata;
     SDL_memset(stream, 0, len);
     SDL_LockMutex(audio_queue->mutex);
     int copied = 0;
-    while (copied < len) {
-        if (audio_queue->size == 0) {
-            break;
-        }
+    while (copied < len && audio_queue->size > 0) {
         int to_copy = std::min(len - copied, audio_queue->size);
-        SDL_MixAudio(stream + copied, audio_queue->data, to_copy, SDL_MIX_MAXVOLUME);
+        SDL_MixAudioFormat(stream + copied, audio_queue->data, AUDIO_S16SYS, to_copy, SDL_MIX_MAXVOLUME);
         audio_queue->size -= to_copy;
         memmove(audio_queue->data, audio_queue->data + to_copy, audio_queue->size);
         copied += to_copy;
     }
     SDL_UnlockMutex(audio_queue->mutex);
-    if (copied > 0) {
-        // std::cout << "Audio callback: Copied " << copied << " bytes" << std::endl;
-    }
 }
+
+const std::map<std::string, std::function<std::string(const cv::Mat &, int, const char *)>> param_func_pair = {
+    {"dy", image_to_ascii_dy_contrast},
+    {"st", image_to_ascii}};
+const std::map<std::string, std::string> char_set_pairs = {
+    {"s", ASCII_SEQ_SHORT},
+    {"S", ASCII_SEQ_SHORT},
+    {"l", ASCII_SEQ_LONG},
+    {"L", ASCII_SEQ_LONG}};
 
 void play_video(const std::map<std::string, std::string> &params) {
     std::string video_path;
+    const char *frame_chars;
+    std::function<std::string(const cv::Mat &, int, const char *)> generate_ascii_func = nullptr;
 
-    if (params.find("-v") != params.end()) {
+    if (params_include(params, "-v")) {
         video_path = params.at("-v");
     } else {
-        print_error("No video but wanna play? Really? \nAdd a -v param, or type \"help\" to get help");
+        print_error("No video but wanna play? Really? \nAdd a -v param, or type \"help\" to get usage");
+        return;
+    }
+
+    if (params_include(params, "-ct") && params_include(param_func_pair, params.at("-ct"))) {
+        generate_ascii_func = param_func_pair.at(params.at("-ct"));
+    } else {
+        generate_ascii_func = image_to_ascii;
+    }
+
+    if (params_include(params, "-chars")) {
+        frame_chars = params.at("-chars").c_str();
+    } else if (params_include(params, "-c") && params_include(char_set_pairs, params.at("-c"))) {
+        frame_chars = char_set_pairs.at(params.at("-c")).c_str();
+    } else {
+        frame_chars = ASCII_SEQ_SHORT;
     }
 
     // Initialize FFmpeg
@@ -228,6 +290,7 @@ void play_video(const std::map<std::string, std::string> &params) {
                 avcodec_free_context(&audio_codec_ctx);
                 print_error("Error: Could not open audio codec.");
             } else {
+                print_audio_stream_info(audio_stream, audio_codec_ctx);
                 if (SDL_Init(SDL_INIT_AUDIO) < 0) {
                     print_error("SDL_Init Error: ", SDL_GetError());
                 } else {
@@ -239,9 +302,10 @@ void play_video(const std::map<std::string, std::string> &params) {
                     wanted_spec.callback = audio_callback;
                     wanted_spec.userdata = &audio_queue;
 
-                    int device_index = 1; // select_audio_device();
-                    const char *device_name = SDL_GetAudioDeviceName(device_index, 0);
+                    // int device_index = 1; // select_audio_device();
+                    list_audio_devices();
                     audio_device_id = SDL_OpenAudioDevice(NULL, 0, &wanted_spec, &spec, 0);
+                    const char *device_name = SDL_GetAudioDeviceName(audio_device_id, 0);
                     if (audio_device_id == 0) {
                         print_error("SDL_OpenAudioDevice Error: ", SDL_GetError());
                     } else {
@@ -290,9 +354,9 @@ void play_video(const std::map<std::string, std::string> &params) {
 
     double fps = av_q2d(video_stream->avg_frame_rate);
     int frame_delay = static_cast<int>(1000.0 / fps);
-    int termWidth, termHeight, newWidth, newHeight, w_space_count = 0, h_line_count = 0;
+    int termWidth, termHeight, frameWidth, frameHeight, prevTermWidth = 0, prevTermHeight = 0, w_space_count = 0, h_line_count = 0;
 
-    bool quit = false;
+    bool quit = false, term_size_changed = true;
     int volume = SDL_MIX_MAXVOLUME;
     int seek_offset = 5; // 快进/快退 5 秒
 
@@ -336,22 +400,30 @@ void play_video(const std::map<std::string, std::string> &params) {
                     }
                     // Get terminal size and resize frame
                     get_terminal_size(termWidth, termHeight);
-                    newWidth = termWidth;
-                    newHeight = (grayFrame.rows * newWidth) / grayFrame.cols / 2;
+                    termHeight -= 2;
+                    if (termWidth != prevTermWidth || termHeight != prevTermHeight) {
+                        prevTermWidth = termWidth;
+                        prevTermHeight = termHeight;
+                        term_size_changed = true;
+
+                    } else
+                        term_size_changed = false;
+                    frameWidth = termWidth;
+                    frameHeight = (grayFrame.rows * frameWidth) / grayFrame.cols / 2;
                     w_space_count = 0;
-                    h_line_count = (termHeight - newHeight) / 2;
-                    if (newHeight > termHeight) {
-                        newHeight = termHeight;
-                        newWidth = (grayFrame.cols * newHeight * 2) / grayFrame.rows;
-                        w_space_count = (termWidth - newWidth) / 2;
+                    h_line_count = (termHeight - frameHeight) / 2;
+                    if (frameHeight > termHeight) {
+                        frameHeight = termHeight;
+                        frameWidth = (grayFrame.cols * frameHeight * 2) / grayFrame.rows;
+                        w_space_count = (termWidth - frameWidth) / 2;
                         h_line_count = 0;
                     }
-                    cv::resize(grayFrame, grayFrame, cv::Size(newWidth, newHeight));
+                    cv::resize(grayFrame, grayFrame, cv::Size(frameWidth, frameHeight));
 
                     // Convert image to ASCII and display
-                    std::string asciiArt = image_to_ascii(grayFrame,
-                                                          w_space_count,
-                                                          ASCII_SEQ_SHORT_10);
+                    std::string asciiArt = generate_ascii_func(grayFrame,
+                                                               w_space_count,
+                                                               frame_chars);
                     current_time = av_rescale_q(packet->pts, video_stream->time_base, AV_TIME_BASE_Q) / AV_TIME_BASE;
 
                     // Create progress bar
@@ -363,16 +435,20 @@ void play_video(const std::map<std::string, std::string> &params) {
 
                     // Combine ASCII art with progress bar
                     std::string combined_output;
-                    combined_output += std::string(h_line_count, '\n') + asciiArt + std::string(std::max(h_line_count - 1, 0), '\n');
+                    add_empty_lines_for(combined_output, h_line_count);
+                    combined_output += asciiArt;
+                    add_empty_lines_for(combined_output,
+                                        termHeight - frameHeight - h_line_count);
                     combined_output += time_played + "\\" + progress_bar + "/" + total_time + "\n";
 
-                    clear_screen();
+                    // clear_screen();
+                    move_cursor_to_top_left(term_size_changed);
                     printf("%s", combined_output.c_str()); // Show the Frame
 
                     // Frame rate control
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto processing_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-                    int remaining_delay = frame_delay - static_cast<int>(processing_time.count());
+                    int remaining_delay = frame_delay - static_cast<int>(processing_time.count()) - 4;
                     if (remaining_delay > 0) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(remaining_delay));
                     }
@@ -393,13 +469,13 @@ void play_video(const std::map<std::string, std::string> &params) {
                         if (audio_queue.size + buffer_size < AUDIO_QUEUE_SIZE) {
                             memcpy(audio_queue.data + audio_queue.size, out_buffer, buffer_size);
                             audio_queue.size += buffer_size;
-                            // std::cout << "Added " << buffer_size << " bytes to audio queue. Total size: " << audio_queue.size << std::endl;
+                            // std::cout << "Added " << buffer_size << " bytes to audio queue. Total size: " << audio_queue.size;
                         } else {
-                            std::cout << "Audio queue full. Discarding " << buffer_size << " bytes." << std::endl;
+                            // std::cout << "Audio queue full. Discarding " << buffer_size << " bytes.";
                         }
                         SDL_UnlockMutex(audio_queue.mutex);
                     } else {
-                        std::cout << "No samples output from swr_convert" << std::endl;
+                        // std::cout << "No samples output from swr_convert";
                     }
                     av_freep(&out_buffer);
                 }
@@ -433,6 +509,11 @@ void play_video(const std::map<std::string, std::string> &params) {
     SDL_DestroyMutex(audio_queue.mutex);
     delete[] audio_queue.data;
 
-    std::cout << "Playback completed!  Press any key to continue...";
-    getchar();
+    if (!quit) {
+        std::cout << "Playback completed! Press any key to continue...";
+        getchar();
+    } else {
+        clear_screen();
+        std::cout << "Playback interrupted!\n";
+    }
 }
