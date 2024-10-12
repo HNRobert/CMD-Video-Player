@@ -30,6 +30,9 @@ struct AudioQueue {
 const char *ASCII_SEQ_LONG = "@%#*+^=~-;:,'.` ";
 const char *ASCII_SEQ_SHORT = "@#*+-:. ";
 
+int volume = SDL_MIX_MAXVOLUME;
+SDL_AudioSpec audio_spec;
+
 // ANSI escape sequence to move the cursor to the top-left corner and clear the screen
 void move_cursor_to_top_left(bool clear = false) {
     printf("\033[H"); // Moves the cursor to (0, 0) and clears the screen
@@ -165,7 +168,10 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
     int copied = 0;
     while (copied < len && audio_queue->size > 0) {
         int to_copy = std::min(len - copied, audio_queue->size);
-        SDL_MixAudioFormat(stream + copied, audio_queue->data, AUDIO_S16SYS, to_copy, SDL_MIX_MAXVOLUME);
+        
+        // Apply volume control
+        SDL_MixAudioFormat(stream + copied, audio_queue->data, AUDIO_S16SYS, to_copy, volume);
+        
         audio_queue->size -= to_copy;
         memmove(audio_queue->data, audio_queue->data + to_copy, audio_queue->size);
         copied += to_copy;
@@ -359,11 +365,12 @@ void play_video(const std::map<std::string, std::string> &params) {
     bool quit = false, term_size_changed = true;
     int volume = SDL_MIX_MAXVOLUME;
     int seek_offset = 5; // 快进/快退 5 秒
+    
+    SDL_Event event;
 
     while (!quit && av_read_frame(format_ctx, packet) >= 0) {
         auto start_time = std::chrono::high_resolution_clock::now();
 
-        SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 quit = true;
@@ -373,16 +380,22 @@ void play_video(const std::map<std::string, std::string> &params) {
                         quit = true;
                         break;
                     case SDLK_LEFT:
-                        av_seek_frame(format_ctx, video_stream_index, packet->pts - seek_offset * video_stream->time_base.den, AVSEEK_FLAG_BACKWARD);
+                        av_seek_frame(format_ctx, -1, current_time - seek_offset, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_ANY);
+                        avcodec_flush_buffers(video_codec_ctx);
+                        if (audio_codec_ctx) avcodec_flush_buffers(audio_codec_ctx);
                         break;
                     case SDLK_RIGHT:
-                        av_seek_frame(format_ctx, video_stream_index, packet->pts + seek_offset * video_stream->time_base.den, AVSEEK_FLAG_ANY);
+                        av_seek_frame(format_ctx, -1, current_time + seek_offset, AVSEEK_FLAG_ANY);
+                        avcodec_flush_buffers(video_codec_ctx);
+                        if (audio_codec_ctx) avcodec_flush_buffers(audio_codec_ctx);
                         break;
                     case SDLK_UP:
-                        volume = std::min(volume + 10, SDL_MIX_MAXVOLUME);
+                        volume = std::min(volume + SDL_MIX_MAXVOLUME / 10, SDL_MIX_MAXVOLUME);
+                        std::cout << "Volume increased to " << (volume * 100 / SDL_MIX_MAXVOLUME) << "%" << std::endl;
                         break;
                     case SDLK_DOWN:
-                        volume = std::max(volume - 10, 0);
+                        volume = std::max(volume - SDL_MIX_MAXVOLUME / 10, 0);
+                        std::cout << "Volume decreased to " << (volume * 100 / SDL_MIX_MAXVOLUME) << "%" << std::endl;
                         break;
                 }
             }
@@ -512,6 +525,7 @@ void play_video(const std::map<std::string, std::string> &params) {
     if (!quit) {
         std::cout << "Playback completed! Press any key to continue...";
         getchar();
+        clear_screen();
     } else {
         clear_screen();
         std::cout << "Playback interrupted!\n";

@@ -26,6 +26,7 @@ void get_command(std::string input = "$DEFAULT") {
     printMap(cmdOpts.options);
     printVector(cmdOpts.arguments);
      */
+    
     if (cmdOpts.arguments.size() == 0) {
         print_error("Arguments Error", "Please insert your argument");
         show_help(true);

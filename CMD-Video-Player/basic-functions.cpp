@@ -57,22 +57,33 @@ std::string get_config_file_path() {
     if (!home_dir) {
         home_dir = ".";
     }
-    return std::string(home_dir) + "/CMD-Video-Player/config.txt";
+    return std::string(home_dir) + "/.config/CMD-Video-Player/config.txt";
 }
 
 void save_default_options_to_file(std::map<std::string, std::string> &default_options) {
     std::string config_file_path = get_config_file_path();
+    std::filesystem::path config_dir = std::filesystem::path(config_file_path).parent_path();
+
+    // 检查目录是否存在，如果不存在则创建
+    if (!std::filesystem::exists(config_dir)) {
+        if (!std::filesystem::create_directories(config_dir)) {
+            std::cerr << "Error: Could not create config directory: " << config_dir << std::endl;
+            return;
+        }
+    }
+
+    // 打开配置文件进行写入
     std::ofstream config_file(config_file_path);
-    
     if (!config_file.is_open()) {
         std::cerr << "Error: Could not open config file for writing: " << config_file_path << std::endl;
         return;
     }
 
+    // 写入默认选项
     for (const auto& option : default_options) {
         config_file << option.first << "=" << option.second << std::endl;
     }
-    
+
     config_file.close();
     std::cout << "Default options saved to " << config_file_path << std::endl;
 }
