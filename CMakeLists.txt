@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.29)
-project(CMD-Media-Player)
+project(cmdp)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -8,47 +8,58 @@ message(STATUS "Flags Debug: ${CMAKE_CXX_FLAGS_DEBUG}")
 message(STATUS "CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
 
-# Determine Homebrew prefix based on platform and architecture
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
-        set(HOMEBREW_PREFIX "/opt/homebrew")
-    else()
-        set(HOMEBREW_PREFIX "/usr/local")
+set(DEP_TYPE "B" CACHE STRING "Install using dependencies from Homebrew(B), APT(A) or Win(W)")
+
+if(DEP_TYPE STREQUAL "B")
+    message("Install using Homebrew Dependencies")
+    # Determine Homebrew prefix based on platform and architecture
+    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+            set(DEP_PREFIX "/opt/homebrew/opt")
+        else()
+            set(DEP_PREFIX "/usr/local/opt")
+        endif()
+    else() # Linux
+        set(DEP_PREFIX "/home/linuxbrew/.linuxbrew/opt")
     endif()
-else() # Linux
-    set(HOMEBREW_PREFIX "/home/linuxbrew/.linuxbrew")
+    message(STATUS "Using Homebrew prefix: ${DEP_PREFIX}")
+
+elseif(DEP_TYPE STREQUAL "A")
+    message("Install using APT Dependencies")
+
+
+elseif(DEP_TYPE STREQUAL "W")
+    message("Install using Windows Dependencies")
 endif()
 
-message(STATUS "Using Homebrew prefix: ${HOMEBREW_PREFIX}")
-
 include_directories(
-    ${HOMEBREW_PREFIX}/opt/ffmpeg/include
-    ${HOMEBREW_PREFIX}/opt/ncurses/include
-    ${HOMEBREW_PREFIX}/opt/opencv/include/opencv4
-    ${HOMEBREW_PREFIX}/opt/readline/include
-    ${HOMEBREW_PREFIX}/opt/sdl2/include
+    ${DEP_PREFIX}/ffmpeg/include
+    ${DEP_PREFIX}/ncurses/include
+    ${DEP_PREFIX}/opencv/include/opencv4
+    ${DEP_PREFIX}/readline/include
+    ${DEP_PREFIX}/sdl2/include
 )
 
 link_directories(
-    ${HOMEBREW_PREFIX}/opt/ffmpeg/lib
-    ${HOMEBREW_PREFIX}/opt/ncurses/lib
-    ${HOMEBREW_PREFIX}/opt/opencv/lib
-    ${HOMEBREW_PREFIX}/opt/readline/lib
-    ${HOMEBREW_PREFIX}/opt/sdl2/lib
+    ${DEP_PREFIX}/ffmpeg/lib
+    ${DEP_PREFIX}/ncurses/lib
+    ${DEP_PREFIX}/opencv/lib
+    ${DEP_PREFIX}/readline/lib
+    ${DEP_PREFIX}/sdl2/lib
 )
 
-add_executable(CMD-Media-Player
+add_executable(cmdp
     src/player-basic.cpp
     src/player-core.cpp
     src/main.cpp
 )
 
-target_include_directories(CMD-Media-Player PUBLIC
+target_include_directories(cmdp PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 
 # target_link_libraries expects library names or paths
-target_link_libraries(CMD-Media-Player
+target_link_libraries(cmdp
     avcodec
     avformat
     avutil
@@ -63,12 +74,12 @@ target_link_libraries(CMD-Media-Player
 )
 
 # Install the executable
-install(TARGETS CMD-Media-Player DESTINATION bin)
+install(TARGETS cmdp DESTINATION bin)
 
 # Install header files
 install(FILES
-    include/cmd-media-player/player-basic.hpp
-    include/cmd-media-player/player-core.hpp
-    include/cmd-media-player/render-basic.hpp
-    DESTINATION include/CMD-Media-Player
+    include/cmdp/player-basic.hpp
+    include/cmdp/player-core.hpp
+    include/cmdp/render-basic.hpp
+    DESTINATION include/cmdp
 )

@@ -5,7 +5,7 @@
 //  Created by Robert He on 2024/9/1.
 //
 
-#include "cmd-media-player/player-basic.hpp"
+#include "cmdp/player-basic.hpp"
 #include <iostream>
 
 std::string format_time(int64_t seconds) {

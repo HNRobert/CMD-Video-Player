@@ -5,8 +5,8 @@
 //  Created by Robert He on 2024/9/2.
 //
 
-#include "cmd-media-player/player-basic.hpp"
-#include "cmd-media-player/render-basic.hpp"
+#include "cmdp/player-basic.hpp"
+#include "cmdp/render-basic.hpp"
 
 const char *ASCII_SEQ_LONGEST = "@%#*+^=~-;:,'.` ";
 const char *ASCII_SEQ_LONGER = "@%#*+=~-:,. ";
