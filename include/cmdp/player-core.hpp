@@ -16,7 +16,15 @@
 #include <iostream>
 
 #include <SDL2/SDL.h>
+
+#ifdef _WIN32
+#include <pdcurses/curses.h>
+#include <windows.h>
+#else
 #include <ncurses.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#endif
 
 // Cancel the OK macro
 #ifdef OK
@@ -35,13 +43,6 @@ extern "C" {
 
 #include <opencv2/opencv.hpp>
 #include <thread>
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <sys/ioctl.h>
-#include <unistd.h>
-#endif
 
 #include "player-basic.hpp"
 
@@ -86,6 +87,22 @@ class NCursesHandler {
   private:
     bool has_quitted = false;
     int termWidth, termHeight;
+
+    #ifdef _WIN32
+    void get_terminal_size(int& width, int& height) {
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+        width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+        height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    }
+    #else
+    void get_terminal_size(int& width, int& height) {
+        struct winsize w;
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+        width = w.ws_col;
+        height = w.ws_row;
+    }
+    #endif
 
   public:
     bool is_paused = false;
